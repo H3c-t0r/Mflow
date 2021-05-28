@@ -3,8 +3,6 @@ import os
 import json
 import pytest
 import numpy as np
-import pandas as pd
-from sklearn import datasets
 import xgboost as xgb
 import matplotlib as mpl
 import yaml
@@ -15,6 +13,8 @@ from mlflow.models import Model
 from mlflow.models.utils import _read_example
 from mlflow.utils.autologging_utils import BatchMetricsLogger
 from unittest.mock import patch
+
+from tests.helper_functions import get_iris
 
 mpl.use("Agg")
 
@@ -40,10 +40,7 @@ def bst_params():
 
 @pytest.fixture(scope="session")
 def dtrain():
-    iris = datasets.load_iris()
-    X = pd.DataFrame(iris.data[:, :2], columns=iris.feature_names[:2])
-    y = iris.target
-    return xgb.DMatrix(X, y)
+    return xgb.DMatrix(*get_iris(usecols=[0, 1]))
 
 
 @pytest.mark.large
@@ -381,9 +378,7 @@ def test_xgb_autolog_gets_input_example(bst_params):
 
     # we cannot use dtrain fixture, as the dataset must be constructed
     #   after the call to autolog() in order to get the input example
-    iris = datasets.load_iris()
-    X = pd.DataFrame(iris.data[:, :2], columns=iris.feature_names[:2])
-    y = iris.target
+    X, y = get_iris(usecols=[0, 1])
     dataset = xgb.DMatrix(X, y)
 
     xgb.train(bst_params, dataset)
@@ -408,10 +403,7 @@ def test_xgb_autolog_infers_model_signature_correctly(bst_params):
 
     # we cannot use dtrain fixture, as the dataset must be constructed
     #   after the call to autolog() in order to get the input example
-    iris = datasets.load_iris()
-    X = pd.DataFrame(iris.data[:, :2], columns=iris.feature_names[:2])
-    y = iris.target
-    dataset = xgb.DMatrix(X, y)
+    dataset = xgb.DMatrix(*get_iris(usecols=[0, 1]))
 
     xgb.train(bst_params, dataset)
     run = get_latest_run()
@@ -502,10 +494,7 @@ def test_xgb_autolog_does_not_break_dmatrix_serialization(bst_params, tmpdir):
 
     # we cannot use dtrain fixture, as the dataset must be constructed
     #   after the call to autolog() in order to test the serialization
-    iris = datasets.load_iris()
-    X = pd.DataFrame(iris.data[:, :2], columns=iris.feature_names[:2])
-    y = iris.target
-    dataset = xgb.DMatrix(X, y)
+    dataset = xgb.DMatrix(*get_iris(usecols=[0, 1]))
 
     xgb.train(bst_params, dataset)
     save_path = tmpdir.join("dataset_serialization_test").strpath
@@ -517,15 +506,12 @@ def test_xgb_autolog_does_not_break_dmatrix_serialization(bst_params, tmpdir):
 @pytest.mark.parametrize("log_input_examples", [True, False])
 @pytest.mark.parametrize("log_model_signatures", [True, False])
 def test_xgb_autolog_configuration_options(bst_params, log_input_examples, log_model_signatures):
-    iris = datasets.load_iris()
-    X = pd.DataFrame(iris.data[:, :2], columns=iris.feature_names[:2])
-    y = iris.target
 
     with mlflow.start_run() as run:
         mlflow.xgboost.autolog(
             log_input_examples=log_input_examples, log_model_signatures=log_model_signatures
         )
-        dataset = xgb.DMatrix(X, y)
+        dataset = xgb.DMatrix(*get_iris(usecols=[0, 1]))
         xgb.train(bst_params, dataset)
     model_conf = get_model_conf(run.info.artifact_uri)
     assert ("saved_input_example_info" in model_conf.to_dict()) == log_input_examples
@@ -535,9 +521,7 @@ def test_xgb_autolog_configuration_options(bst_params, log_input_examples, log_m
 @pytest.mark.large
 @pytest.mark.parametrize("log_models", [True, False])
 def test_xgb_autolog_log_models_configuration(bst_params, log_models):
-    iris = datasets.load_iris()
-    X = pd.DataFrame(iris.data[:, :2], columns=iris.feature_names[:2])
-    y = iris.target
+    X, y = get_iris(usecols=[0, 1])
 
     with mlflow.start_run() as run:
         mlflow.xgboost.autolog(log_models=log_models)
