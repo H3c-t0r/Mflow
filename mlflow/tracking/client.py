@@ -49,6 +49,7 @@ class MlflowClient:
     MLflow Registry Server that creates and manages registered models and model versions. It's a
     thin wrapper around TrackingServiceClient and RegistryClient so there is a unified API but we
     can keep the implementation of the tracking and registry clients independent from each other.
+
     """
 
     def __init__(self, tracking_uri: Optional[str] = None, registry_uri: Optional[str] = None):
@@ -446,8 +447,7 @@ class MlflowClient:
                  :py:class:`Experiment <mlflow.entities.Experiment>` objects. The pagination token
                  for the next page can be obtained via the ``token`` attribute of the object.
 
-        .. code-block:: python
-            :caption: Example
+        .. test-code-block::
 
             import mlflow
 
@@ -456,8 +456,6 @@ class MlflowClient:
                 actual_names = [e.name for e in experiments if e.name != "Default"]
                 assert actual_names == expected_names, (actual_names, expected_names)
 
-
-            mlflow.set_tracking_uri("sqlite:///:memory:")
             client = mlflow.MlflowClient()
 
             # Create experiments

@@ -1108,18 +1108,13 @@ def search_experiments(
 
     :return: A list of :py:class:`Experiment <mlflow.entities.Experiment>` objects.
 
-    .. code-block:: python
-        :caption: Example
+    .. test-code-block::
 
         import mlflow
-
 
         def assert_experiment_names_equal(experiments, expected_names):
             actual_names = [e.name for e in experiments if e.name != "Default"]
             assert actual_names == expected_names, (actual_names, expected_names)
-
-
-        mlflow.set_tracking_uri("sqlite:///:memory:")
 
         # Create experiments
         for name, tags in [
