@@ -12,7 +12,6 @@ from mlflow.entities import RunTag
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils import _get_fully_qualified_class_name
 from mlflow.utils.class_utils import _get_class_from_string
-from mlflow.utils.string_utils import generate_feature_name_if_not_string
 from mlflow.utils.annotations import experimental
 from mlflow.utils.proto_json_utils import NumpyEncoder
 from mlflow.models.evaluation.validation import (
@@ -366,9 +365,7 @@ class EvaluationDataset:
                 self._feature_names = feature_names
             else:
                 self._features_data = data.drop(targets, axis=1, inplace=False)
-                self._feature_names = [
-                    generate_feature_name_if_not_string(c) for c in self._features_data.columns
-                ]
+                self._feature_names = self._features_data.columns
         else:
             raise MlflowException(
                 message="The data argument must be a numpy array, a list or a Pandas DataFrame, or "
@@ -922,6 +919,8 @@ def evaluate(
           explainability insights. Default value is 2000.
         - **explainability_kernel_link**: The kernel link function used by shap kernal explainer.
           Available values are "identity" and "logit". Default value is "identity".
+        - **explainability_ignore_exceptions**: A boolean value specifying whether to ignore 
+          exceptions encountered when using ``shap.Explainer``. Default value is True.
         - **max_classes_for_multiclass_roc_pr**:
           For multiclass classification tasks, the maximum number of classes for which to log
           the per-class ROC curve and Precision-Recall curve. If the number of classes is

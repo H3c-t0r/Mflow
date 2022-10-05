@@ -9,6 +9,7 @@ from mlflow.models.evaluation.base import (
 from mlflow.entities.metric import Metric
 from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
 from mlflow.utils.file_utils import TempDir
+from mlflow.utils.string_utils import generate_feature_name_if_not_string
 from mlflow.models.utils import plot_lines
 from mlflow.models.evaluation.artifacts import (
     ImageEvaluationArtifact,
@@ -263,7 +264,6 @@ def _get_dataframe_with_renamed_columns(x, new_column_names):
     NaNs for every column in new_column_names that does not exist in x.columns. This function
     instead creates a new pd.DataFrame object from x, and then explicitly renames the columns
     to avoid NaNs.
-
     :param x: :param data: A data object, such as a Pandas DataFrame, numPy array, or list
     :param new_column_names: Column names for the output Pandas DataFrame
     :return: A pd.DataFrame with x as data, with columns new_column_names
@@ -675,7 +675,9 @@ class DefaultEvaluator(ModelEvaluator):
         # the column name.
 
         shap_predict_fn = functools.partial(
-            _shap_predict_fn, predict_fn=self.predict_fn, feature_names=self.feature_names
+            _shap_predict_fn,
+            predict_fn=self.predict_fn,
+            feature_names=self.feature_names,
         )
 
         try:
@@ -731,12 +733,19 @@ class DefaultEvaluator(ModelEvaluator):
                 )
             else:
                 shap_values = explainer(sampled_X)
+            # We want shap plots to use self.feature_names, but we can't use always use
+            # self.feature_names when computing shap_values, as they may differ from the
+            # names used during training (e.g. when using np.ndarrays). Instead, we rename
+            # shap_values.feature_names here before creating the plots.
+            shap_values.feature_names = [
+                generate_feature_name_if_not_string(n) for n in self.feature_names
+            ]
         except Exception as e:
             # Shap evaluation might fail on some edge cases, e.g., unsupported input data values
             # or unsupported model on specific shap explainer. Catch exception to prevent it
             # breaking the whole `evaluate` function.
 
-            if not self.evaluator_config.get("ignore_exceptions", True):
+            if not self.evaluator_config.get("explainability_ignore_exceptions", True):
                 raise e
 
             _logger.warning(
