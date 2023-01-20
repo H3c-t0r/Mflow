@@ -2125,19 +2125,23 @@ The ``mlflow models`` CLI commands provide an optional ``--env-manager`` argumen
 
 .. _azureml_deployment:
 
-Deploy a ``python_function`` model on Microsoft Azure ML
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Deploy a ``python_function`` model on Azure Machine Learning
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The MLflow plugin `azureml-mlflow <https://pypi.org/project/azureml-mlflow/>`_ can deploy models to Azure ML, either to Azure Kubernetes Service (AKS) or Azure Container Instances (ACI) for real-time serving.
+The MLflow plugin `azureml-mlflow <https://pypi.org/project/azureml-mlflow/>`_ can deploy models to Azure ML for real-time inference with Azure Kubernetes Service (AKS), Azure Container Instances (ACI) and Azure Machine Learning Managed Inference.
+
+.. note:: 
+  Azure Machine Learning supports the deployment of MLflow models for batch inference. However, the `azureml-mlflow <https://pypi.org/project/azureml-mlflow/>`_ library does not provide batch inference functionality. If you wish to perform batch inference, please see https://docs.microsoft.com/en-us/azure/machine-learning/how-to-deploy-mlflow-models> for more information.
 
 The resulting deployment accepts the following data formats as input:
 
 * JSON-serialized pandas DataFrames in the ``split`` orientation. For example, ``data = pandas_df.to_json(orient='split')``. This format is specified using a ``Content-Type`` request header value of ``application/json``.
+* Tensor input format as JSON-serialized lists (for tensors) and dictionary of lists (for named tensors).
 
-.. warning::
-    The ``TensorSpec`` input format is not fully supported for deployments on Azure Machine Learning at the moment. Be aware that many ``autolog()`` implementations may use ``TensorSpec`` for model's signatures when logging models and hence those deployments will fail in Azure ML.
-
-Deployments can be generated using both the Python API or MLflow CLI. In both cases, a ``JSON`` configuration file can be indicated with the details of the deployment you want to achieve. If not indicated, then a default deployment is done using Azure Container Instances (ACI) and a minimal configuration. The full specification of this configuration file can be checked at `Deployment configuration schema <https://docs.microsoft.com/en-us/azure/machine-learning/reference-azure-machine-learning-cli#deployment-configuration-schema>`_. Also, you will also need the Azure ML MLflow Tracking URI of your particular Azure ML Workspace where you want to deploy your model. You can obtain this URI in several ways:
+.. note:: 
+  Regardless of the format, the input data should be supplied as a JSON payload within the key `input_data`. Notice that this payload is different from the one used when models are served using `mlflow models serve`.
+  
+Deployments can be generated using either the Python API or the MLflow CLI. In both cases, a ``JSON`` configuration file can be indicated with the details of the deployment you want to achieve. If not indicated, then a default deployment is done using Azure Container Instances (ACI) and a minimal configuration. Also, you will also need the Azure ML MLflow Tracking URI of your particular Azure ML Workspace where you want to deploy your model. You can obtain this URI in several ways:
 
 * Through the `Azure ML Studio <https://ml.azure.com>`_:
 
@@ -2146,9 +2150,8 @@ Deployments can be generated using both the Python API or MLflow CLI. In both ca
   * Click "View all properties in Azure Portal" on the pane popup.
   * Copy the ``MLflow tracking URI`` value from the properties section.
 
-* Programmatically, using Azure ML SDK with the method `Workspace.get_mlflow_tracking_uri() <https://docs.microsoft.com/en-us/python/api/azureml-core/azureml.core.workspace.workspace?view=azure-ml-py#azureml-core-workspace-workspace-get-mlflow-tracking-uri>`_. If you are running inside Azure ML Compute, like for instance a Compute Instance, you can get this value also from the environment variable ``os.environ["MLFLOW_TRACKING_URI"]``.
+* Programmatically, using Azure ML SDK with the method `Workspace.get_mlflow_tracking_uri() <https://docs.microsoft.com/en-us/python/api/azureml-core/azureml.core.workspace.workspace?view=azure-ml-py#azureml-core-workspace-workspace-get-mlflow-tracking-uri>`_. If you are running inside Azure ML Compute (e.g., a Compute Instance), this value can be accessed from the environment variable ``os.environ["MLFLOW_TRACKING_URI"]``.
 * Manually, for a given Subscription ID, Resource Group and Azure ML Workspace, the URI is as follows: ``azureml://eastus.api.azureml.ms/mlflow/v1.0/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.MachineLearningServices/workspaces/<WORKSPACE_NAME>``
-
 
 .. rubric:: Configuration example for ACI deployment
 
@@ -2167,6 +2170,7 @@ Deployments can be generated using both the Python API or MLflow CLI. In both ca
 Remarks:
  * If ``containerResourceRequirements`` is not indicated, a deployment with minimal compute configuration is applied (``cpu: 0.1`` and ``memory: 0.5``).
  * If ``location`` is not indicated, it defaults to the location of the workspace.
+ * The full specification of the ACI deployment configuration schema can be viewed at https://docs.microsoft.com/en-us/azure/machine-learning/reference-azure-machine-learning-cli#deployment-configuration-schema.
 
 .. rubric:: Configuration example for an AKS deployment
 
@@ -2178,7 +2182,21 @@ Remarks:
     }
 
 Remarks:
-  * In above example, ``aks-mlflow`` is the name of an Azure Kubernetes Cluster registered/created in Azure Machine Learning.
+  * In the above example, ``aks-mlflow`` is the name of an Azure Kubernetes Cluster (AKS) that has been registered and created in the Azure Machine Learning (AML) service.
+  * The full specification of this configuration file can be viewed at `Deployment configuration schema <https://docs.microsoft.com/en-us/azure/machine-learning/reference-azure-machine-learning-cli#deployment-configuration-schema>`_.
+
+.. rubric:: Configuration example for an Managed Endpoint deployment
+
+.. code-block:: json
+
+    {
+      "instance_type": "Standard_DS2_v2",
+      "instance_count": 1,
+    }
+
+Remarks:
+  * In above example, ``aks-mlflow`` is the name of an Azure Kubernetes Cluster (AKS) service that has been registered and created in Azure Machine Learning (AML).
+ * The full specification of the AKS deployment configuration schema (v2) can be viewed at https://review.docs.microsoft.com/en-us/azure/machine-learning/reference-yaml-deployment-managed-online.
 
 The following examples show how to create a deployment in ACI. Please, ensure you have `azureml-mlflow <https://pypi.org/project/azureml-mlflow/>`_ installed before continuing.
 
@@ -2227,22 +2245,24 @@ The following examples show how to create a deployment in ACI. Please, ensure yo
     import json
     # `sample_input` is a JSON-serialized pandas DataFrame with the `split` orientation
     sample_input = {
-        "columns": [
-            "alcohol",
-            "chlorides",
-            "citric acid",
-            "density",
-            "fixed acidity",
-            "free sulfur dioxide",
-            "pH",
-            "residual sugar",
-            "sulphates",
-            "total sulfur dioxide",
-            "volatile acidity"
-        ],
-        "data": [
-            [8.8, 0.045, 0.36, 1.001, 7, 45, 3, 20.7, 0.45, 170, 0.27]
-        ]
+        "input_data": {
+            "columns": [
+                "alcohol",
+                "chlorides",
+                "citric acid",
+                "density",
+                "fixed acidity",
+                "free sulfur dioxide",
+                "pH",
+                "residual sugar",
+                "sulphates",
+                "total sulfur dioxide",
+                "volatile acidity"
+            ],
+            "data": [
+                [8.8, 0.045, 0.36, 1.001, 7, 45, 3, 20.7, 0.45, 170, 0.27]
+            ]
+        }
     }
     response = requests.post(
                   url=webservice.scoring_uri, data=json.dumps(sample_input),
@@ -2269,22 +2289,24 @@ The following examples show how to create a deployment in ACI. Please, ensure yo
     # `sample_input` is a JSON-serialized pandas DataFrame with the `split` orientation
     sample_input='
     {
-        "columns": [
-            "alcohol",
-            "chlorides",
-            "citric acid",
-            "density",
-            "fixed acidity",
-            "free sulfur dioxide",
-            "pH",
-            "residual sugar",
-            "sulphates",
-            "total sulfur dioxide",
-            "volatile acidity"
-        ],
-        "data": [
-            [8.8, 0.045, 0.36, 1.001, 7, 45, 3, 20.7, 0.45, 170, 0.27]
-        ]
+        "input_data": {
+            "columns": [
+                "alcohol",
+                "chlorides",
+                "citric acid",
+                "density",
+                "fixed acidity",
+                "free sulfur dioxide",
+                "pH",
+                "residual sugar",
+                "sulphates",
+                "total sulfur dioxide",
+                "volatile acidity"
+            ],
+            "data": [
+                [8.8, 0.045, 0.36, 1.001, 7, 45, 3, 20.7, 0.45, 170, 0.27]
+            ]
+        }
     }'
 
     echo $sample_input | curl -s -X POST $scoring_uri\
