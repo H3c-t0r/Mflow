@@ -1644,6 +1644,42 @@ class TestSqlAlchemyStore(unittest.TestCase, AbstractStoreTest):
         ) == sorted(self._search(exp, run_view_type=ViewType.ACTIVE_ONLY))
         assert self._search(exp, run_view_type=ViewType.DELETED_ONLY) == []
 
+    def test_search_and_clause_params(self):
+        experiment_id = self._experiment_factory("search_params_and_clause")
+        r1 = self._run_factory(self._get_run_configs(experiment_id)).info.run_id
+        r2 = self._run_factory(self._get_run_configs(experiment_id)).info.run_id
+
+        self.store.log_param(r1, entities.Param("generic_param", "p_val"))
+        self.store.log_param(r2, entities.Param("generic_param", "p_val"))
+
+        self.store.log_param(r1, entities.Param("generic_2", "some value"))
+        self.store.log_param(r2, entities.Param("generic_2", "another value"))
+
+        self.store.log_param(r1, entities.Param("p_a", "abc"))
+        self.store.log_param(r2, entities.Param("p_b", "ABC"))
+
+        # test search returns appropriate run (same key different values per run)
+        filter_string = "params.generic_2 = 'some value' AND params.generic_param = 'p_val'"
+        assert self._search(experiment_id, filter_string) == [r1]
+
+    def test_search_or_clause_params(self):
+        experiment_id = self._experiment_factory("search_params_or_clause")
+        r1 = self._run_factory(self._get_run_configs(experiment_id)).info.run_id
+        r2 = self._run_factory(self._get_run_configs(experiment_id)).info.run_id
+
+        self.store.log_param(r1, entities.Param("generic_param", "p_val"))
+        self.store.log_param(r2, entities.Param("generic_param", "p_val"))
+
+        self.store.log_param(r1, entities.Param("generic_2", "some value"))
+        self.store.log_param(r2, entities.Param("generic_2", "another value"))
+
+        self.store.log_param(r1, entities.Param("p_a", "abc"))
+        self.store.log_param(r2, entities.Param("p_b", "ABC"))
+
+        # test search returns appropriate run (same key different values per run)
+        filter_string = "params.generic_2 = 'some value' OR params.generic_2 = 'another value'"
+        assert set(self._search(experiment_id, filter_string)) == {r1, r2}
+
     def test_search_params(self):
         experiment_id = self._experiment_factory("search_params")
         r1 = self._run_factory(self._get_run_configs(experiment_id)).info.run_id

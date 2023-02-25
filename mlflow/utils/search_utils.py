@@ -152,6 +152,8 @@ class SearchUtils:
                 return column.in_(value)
             elif comparator == "NOT IN":
                 return ~column.in_(value)
+            elif comparator == "OR":
+                return sa.union(*value)
             return SearchUtils.get_comparison_func(comparator)(column, value)
 
         def mssql_comparison_func(column, value):
