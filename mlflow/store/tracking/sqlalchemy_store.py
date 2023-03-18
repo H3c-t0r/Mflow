@@ -1191,6 +1191,7 @@ class SqlAlchemyStore(AbstractStore):
                 .offset(offset)
                 .limit(max_results)
             )
+
             queried_runs = session.execute(stmt).scalars(SqlRun).all()
 
             runs = [run.to_mlflow_entity() for run in queried_runs]
@@ -1302,6 +1303,27 @@ def _get_sqlalchemy_filter_clauses(parsed, session, dialect):
                 entity = SqlParam
             elif SearchUtils.is_tag(key_type, comparator):
                 entity = SqlTag
+            elif SearchUtils.is_condition(key_type, comparator):
+                f = SearchUtils.get_sql_comparison_func(comparator, dialect)
+
+                _sub_attribute_filters, _sub_non_attribute_filters = _get_sqlalchemy_filter_clauses(
+                    value, session, dialect
+                )
+
+                if comparator == "AND":
+                    attribute_filters.extend(_sub_attribute_filters)
+                    non_attribute_filters.extend(_sub_non_attribute_filters)
+                elif comparator == "OR":
+                    if _sub_attribute_filters:
+                        attribute_filters.append(
+                            f("", [q.element for q in _sub_attribute_filters]).subquery()
+                        )
+
+                    if _sub_non_attribute_filters:
+                        non_attribute_filters.append(
+                            f("", [q.element for q in _sub_non_attribute_filters]).subquery()
+                        )
+                continue
             else:
                 raise MlflowException(
                     "Invalid search expression type '%s'" % key_type,
