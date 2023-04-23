@@ -370,3 +370,23 @@ def get_databricks_env_vars(tracking_uri):
         env_vars.update(workspace_info.to_environment())
 
     return env_vars
+
+
+def get_mask_log_params(work_dir):
+    project = load_project(work_dir)
+    mask_log_params = project.docker_env.get("mask_log_params")
+
+    return mask_log_params
+
+
+def get_log_command(mask_log_params, command):
+    """
+    Returns the string with defined parameters masked with ****.
+    Usage for masking sensitive information in logs
+    """
+    log_command = command
+    for mask_log_param in mask_log_params:
+        pattern = "({0}=)(.*?)( )|({0}=)(.*?)($)".format(mask_log_param)
+        log_command = re.sub(pattern, r"\1****\3", log_command)
+
+    return log_command
