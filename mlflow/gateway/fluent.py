@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from mlflow.gateway.client import MlflowGatewayClient
 from mlflow.gateway.config import Route
@@ -20,6 +20,25 @@ def get_route(name: str) -> Route:
     :return: An instance of the Route class representing the fetched route.
     """
     return MlflowGatewayClient().get_route(name)
+
+
+@experimental
+def create_route(name: str, type: str, model: Dict[str, Any]) -> Route:
+    """
+    Create a Route
+
+    :param name: The name of the route.
+    :param type: The route type, e.g. llm/v1/completions, llm/v1/embeddings
+    """
+    return MlflowGatewayClient().create_route(name, type, model)
+
+
+@experimental
+def delete_route(name: str) -> Route:
+    """
+    Delete a Route
+    """
+    return MlflowGatewayClient().delete_route(name)
 
 
 @experimental

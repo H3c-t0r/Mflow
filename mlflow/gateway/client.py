@@ -46,6 +46,9 @@ class MlflowGatewayClient:
         else:
             return _get_default_host_creds(self._gateway_uri)
 
+    def _resolve_route_base(self):
+        return MLFLOW_GATEWAY_ROUTE_BASE
+
     @property
     def gateway_uri(self):
         """
@@ -94,6 +97,26 @@ class MlflowGatewayClient:
         response = self._call_endpoint("GET", route).json()
 
         return Route(**response)
+
+    def create_route(self, name: str, type: str, model: Dict[str, Any]):
+        """
+        Create a Route
+        """
+        data = {
+            "name": name,
+            "route_type": type,
+            "model": model,
+        }
+        data = json.dumps(data)
+        response = self._call_endpoint("POST", self._route_base, data).json()
+        return Route(**response)
+
+    def delete_route(self, name: str):
+        """
+        Delete a route
+        """
+        route = urljoin(self._route_base, name)
+        self._call_endpoint("DELETE", route)
 
     def search_routes(self, search_filter: Optional[str] = None):
         """
@@ -160,10 +183,6 @@ class MlflowGatewayClient:
             )
 
         """
-
         data = json.dumps(data)
-
-        route = urljoin(self._route_base, route)
-        query_route = urljoin(route, MLFLOW_QUERY_SUFFIX)
-
-        return self._call_endpoint("POST", query_route, data).json()
+        route = urljoin("/gateway/", route + "/invocations")
+        return self._call_endpoint("POST", route, data).json()
