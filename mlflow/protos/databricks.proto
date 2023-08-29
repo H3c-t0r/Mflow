@@ -1,13 +1,11 @@
 syntax = "proto2";
 
 import "google/protobuf/descriptor.proto";
-import "scalapb/scalapb.proto";
+import "mlflow/protos/scalapb/scalapb.proto";
 
 package mlflow;
 
 option java_package = "com.databricks.api.proto.databricks";
-option (scalapb.options).flat_package = true;
-
 
 // Note: 51310 is the beginning of the range of proto extension values for use by applications.
 extend google.protobuf.FieldOptions {
