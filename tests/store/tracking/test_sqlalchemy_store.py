@@ -67,7 +67,8 @@ from mlflow.utils.file_utils import TempDir
 from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT, MLFLOW_RUN_NAME
 from mlflow.utils.name_utils import _GENERATOR_PREDICATES
 from mlflow.utils.os import is_windows
-from mlflow.utils.time import get_current_time_millis
+from numpy import int64
+from mlflow.utils.time_utils import get_current_time_millis
 from mlflow.utils.uri import extract_db_type_from_uri
 
 from tests.integration.utils import invoke_cli_runner
@@ -987,10 +988,14 @@ class TestSqlAlchemyStore(unittest.TestCase, AbstractStoreTest):
         metric2 = entities.Metric(tkey, tval, get_current_time_millis() + 2, 0)
         nan_metric = entities.Metric("NaN", float("nan"), 0, 0)
         pos_inf_metric = entities.Metric("PosInf", float("inf"), 0, 0)
+        numpy_int_metric = entities.Metric("npInt64", int64(2), 0, 0)
         neg_inf_metric = entities.Metric("NegInf", -float("inf"), 0, 0)
         self.store.log_metric(run.info.run_id, metric)
         self.store.log_metric(run.info.run_id, metric2)
         self.store.log_metric(run.info.run_id, nan_metric)
+        # numpy type is tested because it's commonly returned from
+        # scikit-learn evaluation functions.
+        self.store.log_metric(run.info.run_id, numpy_int_metric)
         self.store.log_metric(run.info.run_id, pos_inf_metric)
         self.store.log_metric(run.info.run_id, neg_inf_metric)
 
