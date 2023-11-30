@@ -4297,7 +4297,9 @@ configuration DataFrame for this example defines an interval forecast with nomin
 
 When opening the MLflow runs detail page the serialized model artifact  will show up, such as:
 
-   .. figure:: _static/images/tracking_artifact_ui_custom_flavor.png
+.. figure:: _static/images/tracking_artifact_ui_custom_flavor.png
+    :align: center
+    :figwidth: 40%
 
 To serve the model to a local REST API endpoint run the following MLflow CLI command substituting
 the run id printed during execution of the previous block (for more details refer to the
@@ -4624,7 +4626,11 @@ Deployments can be generated using both the Python API or MLflow CLI. In both ca
   * Copy the ``MLflow tracking URI`` value from the properties section.
 
 * Programmatically, using Azure ML SDK with the method `Workspace.get_mlflow_tracking_uri() <https://docs.microsoft.com/en-us/python/api/azureml-core/azureml.core.workspace.workspace?view=azure-ml-py#azureml-core-workspace-workspace-get-mlflow-tracking-uri>`_. If you are running inside Azure ML Compute, like for instance a Compute Instance, you can get this value also from the environment variable ``os.environ["MLFLOW_TRACKING_URI"]``.
-* Manually, for a given Subscription ID, Resource Group and Azure ML Workspace, the URI is as follows: ``azureml://eastus.api.azureml.ms/mlflow/v1.0/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.MachineLearningServices/workspaces/<WORKSPACE_NAME>``
+* Manually, for a given Subscription ID, Resource Group and Azure ML Workspace, the URI is as follows: 
+
+    ``azureml://eastus.api.azureml.ms/mlflow/v1.0/subscriptions/``
+    ``<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP_NAME>/``
+    ``providers/Microsoft.MachineLearningServices/workspaces/<WORKSPACE_NAME>``
 
 
 .. rubric:: Configuration example for ACI deployment

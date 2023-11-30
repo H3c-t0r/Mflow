@@ -1,0 +1,85 @@
+/* CSS for ToC Container */
+#floating-toc-container {
+    position: fixed;
+    right: 2rem;
+    top: 6rem;
+    min-width: 250px;
+    max-width: 300px;
+    width: auto;
+    max-height: 70vh;
+    overflow-y: auto;
+    background: #ffffff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: rgba(0, 0, 0, 0.1) 0rem 0.4rem 1.2rem;
+    z-index: 99;
+    display: block;
+    transition: border-color 0.3s ease-in-out;
+    border: 2px solid transparent; 
+}
+
+/*Hide the ToC on mobile devices as there isn't enough room to display it*/
+@media only screen and (max-width: 768px) {
+    #floating-toc-container {
+        display: none; 
+    }
+}
+
+#floating-toc-container:hover {
+    border: 2px solid #1a73e8;
+}
+
+#floating-toc li {
+    list-style: none;
+    margin-top: 4px; 
+}
+
+#floating-toc li a {
+    color: #333333; 
+    text-decoration: none;
+    transition: all 0.2s ease-in-out; 
+    display: block; 
+    padding: 6px 8px; 
+    transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+}
+
+#floating-toc li.toc-h1 a {
+    font-size: 1.2rem;
+}
+
+#floating-toc li.toc-h2 a {
+    padding-left: 34px;
+    font-size: 1.1rem;
+}
+
+#floating-toc li.toc-h3 a {
+    padding-left: 48px;
+    font-size: 1rem;
+}
+
+#floating-toc li a:hover {
+    background-color: #f2f2f2;
+    color: #1a73e8; 
+}
+
+#floating-toc li a:active {
+    animation: flashOnClick 0.4s ease-out;
+}
+
+@keyframes flashOnClick {
+    0%, 100% {
+        background-color: #f2f2f2;
+        color: #1a73e8;
+    }
+    25%, 75% {
+        background-color: #1a73e8;
+        color: #f2f2f2;
+    }
+}
+
+#floating-toc li a.active {
+    font-weight: 700;
+    background-color: #1a73e8;
+    color: #ffffff; 
+    border-radius: 4px;
+}
