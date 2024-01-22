@@ -151,3 +151,10 @@ def monkeypatch():
 def tmp_sqlite_uri(tmp_path):
     path = tmp_path.joinpath("mlflow.db").as_uri()
     return ("sqlite://" if is_windows() else "sqlite:////") + path[len("file://") :]
+
+
+@pytest.fixture
+def set_tag_auto_truncate():
+    os.environ["MLFLOW_AUTO_TRUNCATE_LONG_TAG_VALUE"] = "1"
+    yield
+    os.environ.pop("MLFLOW_AUTO_TRUNCATE_LONG_TAG_VALUE")
