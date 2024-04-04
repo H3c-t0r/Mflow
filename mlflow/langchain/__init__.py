@@ -272,7 +272,7 @@ def save_model(
     code_dir_subpath = _validate_and_copy_code_paths(formatted_code_path, path)
 
     if signature is None:
-        if input_example is not None:
+        if input_example is not None and not isinstance(lc_model, str):
             wrapped_model = _LangChainModelWrapper(lc_model)
             signature = _infer_signature_from_input_example(input_example, wrapped_model)
         else:
@@ -594,7 +594,8 @@ class _LangChainModelWrapper:
         """
         Args:
             data: Model input data.
-            params: Additional parameters to pass to the model for inference.
+            params: Additional parameters passed to model during inference so that
+                config={"configurable": params}.
 
                 .. Note:: Experimental: This parameter may change or be removed in a future
                     release without warning.
@@ -605,7 +606,9 @@ class _LangChainModelWrapper:
         from mlflow.langchain.api_request_parallel_processor import process_api_requests
 
         messages, return_first_element = self._prepare_messages(data)
-        results = process_api_requests(lc_model=self.lc_model, requests=messages)
+        results = process_api_requests(
+            lc_model=self.lc_model, requests=messages, configurables=params
+        )
         return results[0] if return_first_element else results
 
     @experimental
@@ -696,7 +699,8 @@ class _TestLangChainWrapper(_LangChainModelWrapper):
 
         Args:
             data: Model input data.
-            params: Additional parameters to pass to the model for inference.
+            params: Additional parameters passed to model during inference so that
+                config={"configurable": params}.
 
                 .. Note:: Experimental: This parameter may change or be removed in a future
                     release without warning.
@@ -730,7 +734,7 @@ class _TestLangChainWrapper(_LangChainModelWrapper):
             mockContent = TEST_CONTENT
 
         with _mock_async_request(mockContent):
-            result = super().predict(data)
+            result = super().predict(data, params)
         if (
             hasattr(self.lc_model, "return_source_documents")
             and self.lc_model.return_source_documents
