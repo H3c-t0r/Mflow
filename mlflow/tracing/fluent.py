@@ -19,10 +19,16 @@ from mlflow.tracing.constant import SpanAttributeKey
 from mlflow.tracing import extract
 from mlflow.tracing.display import get_display_handler
 from mlflow.tracing.trace_manager import InMemoryTraceManager
-from mlflow.tracing.utils import capture_function_input_args, encode_span_id, get_otel_attribute, format_span_id
 from mlflow.tracing.types.constant import SpanAttributeKey
 from mlflow.tracing.types.wrapper import MlflowSpanWrapper, NoOpMlflowSpanWrapper, NoOpSpan
-from mlflow.tracing.utils import capture_function_input_args, encode_span_id, traces_to_df, SPANS_COLUMN_NAME
+from mlflow.tracing.utils import (
+    SPANS_COLUMN_NAME,
+    capture_function_input_args,
+    encode_span_id,
+    traces_to_df,
+    get_otel_attribute, 
+    format_span_id
+)
 from mlflow.tracking.fluent import _get_experiment_id
 from mlflow.utils import get_results_from_paginated_fn
 
@@ -221,7 +227,7 @@ def search_traces(
     max_results: Optional[int] = None,
     order_by: Optional[List[str]] = None,
     extract_fields: Optional[List[str]] = None,
-) -> 'pandas.DataFrame':
+) -> "pandas.DataFrame":
     """
     Return traces that match the given list of search expressions within the experiments.
 
@@ -231,7 +237,7 @@ def search_traces(
         max_results: Maximum number of traces desired. If None, all traces matching the search
             expressions will be returned.
         order_by: List of order_by clauses.
-        extract_fields: List of fields to extract from the traces. Fields are of the form 
+        extract_fields: List of fields to extract from the traces. Fields are of the form
             "span_name.[inputs|outputs].field_name" or "span_name.[inputs|outputs]". For example,
             given a trace with a span named "predict" and outputs with names "result" and
             "explanation", the field "predict.outputs.result" would extract the "result" field, and
