@@ -1,4 +1,6 @@
 from typing import Dict
+import random
+import time
 from unittest import mock
 
 import pytest
@@ -29,6 +31,48 @@ def clear_singleton():
         _TRACER_PROVIDER_SET_ONCE._done = False
     with _TRACER_PROVIDER_INITIALIZED._lock:
         _TRACER_PROVIDER_INITIALIZED._done = False
+
+
+@pytest.fixture
+def mock_client():
+    # OpenTelemetry doesn't allow re-initializing the tracer provider within a single
+    # process. However, we need to create a new tracer provider with the new mock client
+    # so hack the Once object to allow re-initialization.
+    from opentelemetry.trace import _TRACER_PROVIDER_SET_ONCE
+
+    with _TRACER_PROVIDER_SET_ONCE._lock:
+        _TRACER_PROVIDER_SET_ONCE._done = False
+
+    mock_client = InMemoryTraceClientWithTracking.get_instance()
+
+    _setup_tracer_provider(mock_client)
+
+    yield mock_client
+
+    # Clear traces collected in the buffer
+    mock_client._flush()
+
+
+@pytest.fixture
+def create_trace():
+    return lambda id: Trace(
+        info=TraceInfo(
+            request_id=id,
+            experiment_id="test",
+            timestamp_ms=int(time.time() * 1000),
+            execution_time_ms=100 % random.randint(0, 100),
+            status=TraceStatus.OK if random.randint(0, 100) % 2 == 0 else TraceStatus.ERROR,
+            request_metadata={"request_id": id},
+            tags={
+                "timestamp_ms": int(time.time() * 1000),
+            },
+        ),
+        data=TraceData(
+            spans=[],
+            request=(id * random.randint(0, 100)),
+            response=(id * random.randint(0, 50)),
+        ),
+    )
 
 
 @pytest.fixture(autouse=True)
