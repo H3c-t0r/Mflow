@@ -5,11 +5,20 @@ import json
 import logging
 from collections import Counter
 from functools import lru_cache
+<<<<<<< HEAD
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Literal
 from dataclasses import dataclass
+=======
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+>>>>>>> b600af67a (linter)
 
 from opentelemetry import trace as trace_api
 from packaging.version import Version
+
+if TYPE_CHECKING:
+    import pandas
+
+    import mlflow.entities
 
 _logger = logging.getLogger(__name__)
 
