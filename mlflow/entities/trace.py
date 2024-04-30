@@ -23,8 +23,9 @@ class Trace(_MlflowObject):
     def to_json(self) -> str:
         from mlflow.tracing.utils import TraceJSONEncoder
 
-        return json.dumps(asdict(self), cls=TraceJSONEncoder)
-
+        return json.dumps(
+            {"info": asdict(self.info), "data": self.data.to_dict()}, cls=TraceJSONEncoder
+        )
     def _repr_mimebundle_(self, include=None, exclude=None):
         """
         This method is used to trigger custom display logic in IPython notebooks.
