@@ -5,15 +5,22 @@ import json
 import logging
 from collections import Counter
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Literal
+from dataclasses import dataclass
 
 from opentelemetry import trace as trace_api
 from packaging.version import Version
 
+if TYPE_CHECKING:
+    import pandas
+
+    import mlflow.entities
+    from mlflow.entities import LiveSpan
+
+
 _logger = logging.getLogger(__name__)
 
-if TYPE_CHECKING:
-    from mlflow.entities import LiveSpan
+SPANS_COLUMN_NAME = "spans"
 
 
 def capture_function_input_args(func, args, kwargs) -> Dict[str, Any]:
@@ -149,3 +156,52 @@ def get_otel_attribute(span: trace_api.Span, key: str) -> Optional[str]:
         return json.loads(span.attributes.get(key))
     except Exception:
         _logger.debug(f"Failed to get attribute {key} with from span {span}.", exc_info=True)
+
+def traces_to_df(traces: List["mlflow.entities.Trace"]) -> 'pandas.DataFrame':
+    """
+    Convert a list of MLflow Traces to a pandas DataFrame with one column called "traces"
+    containing string representations of each Trace.
+    """
+    import pandas as pd
+
+    rows = [
+        _TraceRow(
+            request_id=trace.info.request_id,
+            timestamp_ms=trace.info.timestamp_ms,
+            status=trace.info.status,
+            execution_time_ms=trace.info.execution_time_ms,
+            request=trace.data.request,
+            request_metadata=trace.info.request_metadata,
+            spans=trace.data.spans,
+            tags=trace.info.tags,
+            response=trace.data.response,
+        )
+        for trace in traces
+    ]
+    return pd.DataFrame.from_records([row.to_dict() for row in rows])
+
+
+@dataclass
+class _TraceRow:
+    request_id: str
+    timestamp_ms: int
+    status: str
+    execution_time_ms: int
+    request: str
+    request_metadata: Dict[str, str]
+    spans: List["mlflow.entities.Span"]
+    tags: Dict[str, str]
+    response: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "request_id": self.request_id,
+            "timestamp_ms": self.timestamp_ms,
+            "status": self.status,
+            "execution_time_ms": self.execution_time_ms,
+            "request": self.request,
+            "response": self.response,
+            "request_metadata": self.request_metadata,
+            "spans": [span.to_dict() for span in self.spans],
+            "tags": self.tags,
+        }

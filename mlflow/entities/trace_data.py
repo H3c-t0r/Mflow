@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -22,10 +23,11 @@ class TraceData:
 
     @classmethod
     def from_dict(cls, d):
+        spans = [Span.from_dict(span) for span in d["spans"]]
         return cls(
-            request=d.get("request"),
-            response=d.get("response"),
-            spans=[Span.from_dict(span) for span in d.get("spans", [])],
+            spans=spans,
+            request=json.dumps(spans[0].inputs),
+            response=json.dumps(spans[0].outputs),
         )
 
     def to_dict(self) -> Dict[str, Any]:

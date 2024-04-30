@@ -37,6 +37,8 @@ class TraceInfo(_MlflowObject):
         return False
 
     def to_proto(self):
+        from mlflow.tracing.types.constant import MAX_CHARS_IN_TRACE_INFO_METADATA_AND_TAGS
+
         proto = ProtoTraceInfo()
         proto.request_id = self.request_id
         proto.experiment_id = self.experiment_id
