@@ -612,6 +612,12 @@ class MlflowClient:
         trace_manager = InMemoryTraceManager.get_instance()
         root_span_id = trace_manager.get_root_span_id(request_id)
 
+        print("TRACE INFO", trace_info)
+        print("EXECUTION TIME", trace_info.execution_time_ms)
+        # Log execution time for metric
+        trace_info = trace_manager.get_trace_info(request_id)
+        self.log_metric("mlflow.loggedTraceExecutionTime", trace_info.execution_time_ms)
+
         if root_span_id is None:
             if self.get_trace(request_id=request_id):
                 raise MlflowException(
