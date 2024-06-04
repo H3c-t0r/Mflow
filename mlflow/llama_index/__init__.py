@@ -1,13 +1,20 @@
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import yaml
-from llama_index.core import StorageContext, load_index_from_storage
+from llama_index.core import QueryBundle, StorageContext, load_index_from_storage
+from llama_index.core.base.response.schema import (
+    PydanticResponse,
+    Response,
+)
+from llama_index.core.chat_engine.types import (
+    AgentChatResponse,
+)
 
 import mlflow
-import mlflow.exceptions
 from mlflow import pyfunc
+from mlflow.exceptions import MlflowException
 from mlflow.llama_index.serialize_objects import (
     deserialize_settings,
     serialize_settings,
@@ -18,7 +25,7 @@ from mlflow.llama_index.signature import (
 )
 from mlflow.models import Model, ModelInputExample, ModelSignature
 from mlflow.models.model import MLMODEL_FILE_NAME
-from mlflow.models.utils import _save_example
+from mlflow.models.utils import _convert_llm_input_data, _save_example
 from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.docstring_utils import LOG_MODEL_PARAM_DOCS, format_docstring
@@ -46,7 +53,6 @@ from mlflow.utils.requirements_utils import _get_pinned_requirement
 _CHAT_ENGINE_NAME = "chat"
 _QUERY_ENGINE_NAME = "query"
 _RETRIEVER_ENGINE_NAME = "retriever"
-
 _SUPPORTED_ENGINES = {_CHAT_ENGINE_NAME, _QUERY_ENGINE_NAME, _RETRIEVER_ENGINE_NAME}
 
 FLAVOR_NAME = "llama_index"
@@ -348,32 +354,102 @@ def _load_pyfunc(path, model_config: Optional[Dict[str, Any]] = None):
 
 
 class _LlamaIndexModelWrapper:
-    def __init__(self, index, engine_type, model_config):
-        """
-        PLACEHOLDER
-        - Convert to a builder class
-        """
-        _engine_to_instantiation_method = {
-            _CHAT_ENGINE_NAME: "as_chat_engine",
-            _QUERY_ENGINE_NAME: "as_query_engine",
-            _RETRIEVER_ENGINE_NAME: "as_retriever",
-        }
-        _engine_to_interaction_method = {
-            _CHAT_ENGINE_NAME: "chat",
-            _QUERY_ENGINE_NAME: "query",
-            _RETRIEVER_ENGINE_NAME: "retrieve",
-        }
+    def _build_engine_method(self) -> Callable:
+        if self.engine_type == _QUERY_ENGINE_NAME:
+            return self.index.as_query_engine(**self.model_config).query
+        elif self.engine_type == _CHAT_ENGINE_NAME:
+            return self.index.as_chat_engine(**self.model_config).chat
+        elif self.engine_type == _RETRIEVER_ENGINE_NAME:
+            return self.index.as_retriever(**self.model_config).retrieve
+        else:
+            raise ValueError(
+                f"Unsupported engine type: {self.engine_type}. It must be one of "
+                "{_SUPPORTED_ENGINES}"
+            )
 
-        engine_method_name = _engine_to_instantiation_method[engine_type]
-        engine_method = getattr(index, engine_method_name)
-        engine = engine_method(**model_config)
+    def __init__(self, index, engine_type: str, model_config: Optional[Dict[str, Any]] = None):
+        self.index = index
+        self.model_config = model_config or {}
+        self.engine_type = engine_type
+        self.predict_callable = self._build_engine_method()
 
-        engine_interaction_method = _engine_to_interaction_method[engine_type]
-        self.predict_method = getattr(engine, engine_interaction_method)
+    def _format_predict_input_query_and_retriever(self, data):
+        data = _convert_llm_input_data(data)
+
+        if isinstance(data, str):
+            return data
+        elif isinstance(data, list):
+            if len(data) > 1:
+                raise MlflowException(
+                    "Query engine and retrievers only take one message. "
+                    "Please provide a single message."
+                )
+            elif len(data) == 1:
+                return self._format_predict_input_query_and_retriever(data[0])
+            else:
+                # Let the llama_index query engine handle error
+                return None
+        elif isinstance(data, dict):
+            try:
+                return QueryBundle.from_dict(data)
+            except KeyError as e:
+                raise MlflowException(
+                    "You have specified the incorrect schema for your engine."
+                    "Please verify that the schema is correct."
+                    f"{e}"
+                )
+
+    def _format_predict_input_chat(self, data):
+        # TODO
+        raise NotImplementedError
+
+    def _format_predict_input(self, data):
+        """
+        Incoming types
+        [pandas.DataFrame, numpy.ndarray, scipy.sparse.(csc_matrix | csr_matrix),
+        List[Any], Dict[str, Any], pyspark.sql.DataFrame]
+
+        Output types
+        - Query: QueryBundle
+        - Chat: Message, Chat History
+        - Retriever: Union[QueryBundle, str]
+        """
+
+        if self.engine_type in {_QUERY_ENGINE_NAME, _RETRIEVER_ENGINE_NAME}:
+            return self._format_predict_input_query_and_retriever(data)
+        elif self.engine_type == _CHAT_ENGINE_NAME:
+            return self._format_predict_input_chat(data)
+
+    def _format_predict_output_as_str(self, data):
+        # TOOD: add more supported types
+        query_response_types = (Response, PydanticResponse)
+        chat_response_types = (AgentChatResponse,)
+
+        if isinstance(data, query_response_types + chat_response_types):
+            return data.__str__()
+        else:
+            raise NotImplementedError
+
+    def _format_predict_output_as_list(self, data: List) -> List[Dict]:
+        return [doc.to_dict() for doc in data]
+
+    def _format_predict_output(self, data):
+        """
+        Response Type
+        Union[
+            Response, StreamingResponse, AsyncStreamingResponse, PydanticResponse
+        ]
+
+        Pyfunc predict return signature
+            [numpy.ndarray | pandas.(Series | DataFrame) | List | Dict | pyspark.sql.DataFrame]
+
+        """
+        if self.engine_type == _QUERY_ENGINE_NAME or self.engine_type == _CHAT_ENGINE_NAME:
+            return self._format_predict_output_as_str(data)
+        elif self.engine_type == _RETRIEVER_ENGINE_NAME:
+            return self._format_predict_output_as_list(data)
 
     def predict(self, data, params: Optional[Dict[str, Any]] = None):
-        """
-        PLACEHOLDER
-        """
-        data = "asdf"
-        return self.predict_method(data)
+        input = self._format_predict_input(data)
+        predictions = self.predict_callable(input, **(params or {}))
+        return self._format_predict_output(predictions)
