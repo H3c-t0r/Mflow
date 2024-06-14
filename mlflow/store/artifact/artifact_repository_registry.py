@@ -7,6 +7,7 @@ from mlflow.exceptions import MlflowException
 from mlflow.store.artifact.artifact_repo import ArtifactRepository
 from mlflow.store.artifact.azure_blob_artifact_repo import AzureBlobArtifactRepository
 from mlflow.store.artifact.dbfs_artifact_repo import dbfs_artifact_repo_factory
+from mlflow.store.artifact.volumes_artifact_repo import volumes_artifact_repo_factory
 from mlflow.store.artifact.ftp_artifact_repo import FTPArtifactRepository
 from mlflow.store.artifact.gcs_artifact_repo import GCSArtifactRepository
 from mlflow.store.artifact.hdfs_artifact_repo import HdfsArtifactRepository
@@ -85,7 +86,6 @@ class ArtifactRepositoryRegistry:
         """
         return self._registry
 
-
 _artifact_repository_registry = ArtifactRepositoryRegistry()
 
 _artifact_repository_registry.register("", LocalArtifactRepository)
@@ -97,6 +97,7 @@ _artifact_repository_registry.register("wasbs", AzureBlobArtifactRepository)
 _artifact_repository_registry.register("ftp", FTPArtifactRepository)
 _artifact_repository_registry.register("sftp", SFTPArtifactRepository)
 _artifact_repository_registry.register("dbfs", dbfs_artifact_repo_factory)
+_artifact_repository_registry.register("volumes", volumes_artifact_repo_factory)
 _artifact_repository_registry.register("hdfs", HdfsArtifactRepository)
 _artifact_repository_registry.register("viewfs", HdfsArtifactRepository)
 _artifact_repository_registry.register("runs", RunsArtifactRepository)
